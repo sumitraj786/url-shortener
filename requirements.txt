@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pytest
+httpx
+pydantic
+pydantic-settings
+qrcode[pil]

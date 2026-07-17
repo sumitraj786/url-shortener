@@ -5,7 +5,7 @@ import qrcode
 
 BASE62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-
+#may need refactoring based on the encoding requirements
 def encode_base62(n: int) -> str:
     if n == 0:
         return BASE62[0]

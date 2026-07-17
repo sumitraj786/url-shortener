@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>URL Shortener</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a; color: #e2e8f0; min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .container { max-width: 680px; width: 100%; padding: 2rem 1.5rem; }
+  header { text-align: center; margin-bottom: 2.5rem; }
+  header h1 { font-size: 2rem; font-weight: 700; color: #f8fafc; }
+  header h1 span { color: #38bdf8; }
+  header p { color: #94a3b8; margin-top: 0.4rem; font-size: 0.95rem; }
+  .card {
+    background: #1e293b; border-radius: 12px; padding: 1.5rem;
+    margin-bottom: 1.5rem; border: 1px solid #334155;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #f1f5f9; }
+  .form-group { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.35rem; }
+  input[type="text"], input[type="url"] {
+    width: 100%; padding: 0.7rem 0.9rem; border-radius: 8px;
+    border: 1px solid #334155; background: #0f172a; color: #e2e8f0;
+    font-size: 0.95rem; outline: none; transition: border-color 0.2s;
+  }
+  input:focus { border-color: #38bdf8; }
+  input::placeholder { color: #475569; }
+  .input-row { display: flex; gap: 0.75rem; }
+  .input-row input { flex: 1; }
+  .input-row input:first-child { flex: 3; }
+  .btn {
+    padding: 0.7rem 1.5rem; border-radius: 8px; border: none;
+    font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    transition: background 0.2s, opacity 0.2s; white-space: nowrap;
+  }
+  .btn-primary { background: #2563eb; color: #fff; }
+  .btn-primary:hover { background: #1d4ed8; }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-secondary { background: #334155; color: #e2e8f0; }
+  .btn-secondary:hover { background: #475569; }
+  .btn-success { background: #059669; color: #fff; }
+  .btn-success:hover { background: #047857; }
+  .btn-full { width: 100%; }
+  .result-card {
+    background: #0f172a; border-radius: 8px; padding: 1rem;
+    border: 1px solid #334155; margin-top: 1rem;
+  }
+  .result-card .label { font-size: 0.75rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+  .result-card .value {
+    font-size: 1rem; color: #e2e8f0; word-break: break-all; margin-top: 0.2rem;
+  }
+  .result-card .value a { color: #38bdf8; text-decoration: none; }
+  .result-card .value a:hover { text-decoration: underline; }
+  .result-card .actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .badge {
+    display: inline-block; font-size: 0.7rem; padding: 0.2rem 0.5rem;
+    border-radius: 4px; font-weight: 600; margin-left: 0.4rem;
+  }
+  .badge-new { background: #059669; color: #fff; }
+  .badge-existing { background: #d97706; color: #fff; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 0.75rem; }
+  th { text-align: left; color: #94a3b8; font-weight: 600; padding: 0.5rem 0.4rem; border-bottom: 1px solid #334155; }
+  td { padding: 0.5rem 0.4rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+  .empty-state { text-align: center; color: #64748b; padding: 1.5rem 0; }
+  .error-banner {
+    background: #7f1d1d; border: 1px solid #dc2626; border-radius: 8px;
+    padding: 0.8rem 1rem; margin-bottom: 1rem; color: #fca5a5;
+    font-size: 0.9rem; display: none;
+  }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid #64748b; border-top-color: #38bdf8;
+    border-radius: 50%; animation: spin 0.6s linear infinite;
+    margin-right: 0.4rem; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: #1e293b; color: #e2e8f0; padding: 0.7rem 1.4rem;
+    border-radius: 8px; border: 1px solid #334155; font-size: 0.9rem;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+  .section-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .tab-btn {
+    padding: 0.5rem 1.2rem; border-radius: 6px; border: 1px solid #334155;
+    background: transparent; color: #94a3b8; cursor: pointer; font-size: 0.85rem;
+    font-weight: 500; transition: all 0.2s;
+  }
+  .tab-btn.active { background: #1e3a5f; border-color: #38bdf8; color: #38bdf8; }
+  .tab-btn:hover { border-color: #475569; color: #e2e8f0; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .stat-number { font-size: 2rem; font-weight: 700; color: #38bdf8; }
+  .stat-label { font-size: 0.8rem; color: #64748b; }
+  .stat-row { display: flex; gap: 2rem; margin-bottom: 1rem; }
+  .copied-btn { background: #059669; }
+  .stats-summary { display: flex; gap: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; }
+  .stats-summary > div { flex: 1; min-width: 100px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>shr<span>.</span>link</h1>
+    <p>Fast URL shortener with click analytics</p>
+  </header>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="card">
+    <h2>Shorten a URL</h2>
+    <div class="form-group">
+      <input type="url" id="urlInput" placeholder="https://example.com/very/long/url" autofocus>
+    </div>
+    <div class="form-group">
+      <input type="text" id="aliasInput" placeholder="Custom alias (optional)">
+    </div>
+    <button class="btn btn-primary btn-full" id="shortenBtn" onclick="shorten()">Shorten</button>
+    <div id="shortenResult"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-tabs">
+      <button class="tab-btn active" data-tab="stats" onclick="switchTab('stats')">Analytics</button>
+      <button class="tab-btn" data-tab="recent" onclick="switchTab('recent')">Recent</button>
+    </div>
+
+    <div class="tab-content active" id="tab-stats">
+      <div class="form-group">
+        <label for="statsCode">Enter short code or alias</label>
+        <div class="input-row">
+          <input type="text" id="statsCode" placeholder="e.g. 1 or my-link">
+          <button class="btn btn-secondary" onclick="fetchStats()">Lookup</button>
+        </div>
+      </div>
+      <div id="statsResult"></div>
+    </div>
+
+    <div class="tab-content" id="tab-recent">
+      <button class="btn btn-secondary btn-full" onclick="fetchRecent()">Load recent URLs</button>
+      <div id="recentResult"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const BASE = window.location.origin;
+
+async function api(method, path, body) {
+  const opts = { method, headers: {} };
+  if (body) {
+    opts.headers['Content-Type'] = 'application/json';
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(BASE + path, opts);
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
+  return { status: res.status, ok: res.ok, data };
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBanner');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 4000);
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+function setLoading(btnId, loading) {
+  const btn = document.getElementById(btnId);
+  if (loading) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Processing...';
+  } else {
+    btn.disabled = false;
+    btn.innerHTML = btnId === 'shortenBtn' ? 'Shorten' : btnId === 'statsBtn' ? 'Lookup' : 'Load recent URLs';
+  }
+}
+
+async function shorten() {
+  const url = document.getElementById('urlInput').value.trim();
+  const alias = document.getElementById('aliasInput').value.trim() || null;
+
+  if (!url) { showError('Please enter a URL'); return; }
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    showError('URL must start with http:// or https://');
+    return;
+  }
+
+  const btn = document.getElementById('shortenBtn');
+  setLoading('shortenBtn', true);
+  document.getElementById('shortenResult').innerHTML = '';
+
+  const body = { original_url: url };
+  if (alias) body.custom_alias = alias;
+
+  const { status, ok, data } = await api('POST', '/shorten', body);
+  setLoading('shortenBtn', false);
+
+  if (!ok) {
+    const msg = data?.detail?.detail || data?.detail?.[0]?.msg || data?.detail || 'Something went wrong';
+    showError(msg);
+    return;
+  }
+
+  const isNew = status === 201;
+  const badge = isNew ? '<span class="badge badge-new">NEW</span>' : '<span class="badge badge-existing">EXISTING</span>';
+
+  document.getElementById('shortenResult').innerHTML = `
+    <div class="result-card">
+      <div class="label">Short URL ${badge}</div>
+      <div class="value"><a href="${data.short_url}" target="_blank" id="shortUrlDisplay">${data.short_url}</a></div>
+      <div class="actions">
+        <button class="btn btn-success" onclick="copyUrl('${data.short_url}')">Copy</button>
+        <button class="btn btn-secondary" onclick="openStats('${data.short_code}')">Analytics</button>
+        <a href="${data.short_url}" target="_blank" class="btn btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center">Open</a>
+      </div>
+      <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid #1e293b">
+        <div class="label">Original URL</div>
+        <div class="value" style="font-size:0.85rem;color:#94a3b8">${data.original_url}</div>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchStats() {
+  const code = document.getElementById('statsCode').value.trim();
+  if (!code) { showError('Enter a short code'); return; }
+
+  const el = document.getElementById('statsResult');
+  el.innerHTML = '<div class="empty-state"><span class="spinner"></span>Loading...</div>';
+
+  const { status, ok, data } = await api('GET', `/${code}/stats`);
+
+  if (!ok) {
+    el.innerHTML = '';
+    if (status === 404) showError('Short code not found');
+    else showError('Failed to load analytics');
+    return;
+  }
+
+  const recentRows = data.recent_accesses.length
+    ? data.recent_accesses.map(a => `<tr>
+      <td style="white-space:nowrap">${new Date(a.accessed_at).toLocaleString()}</td>
+      <td>${a.ip_address || '-'}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${a.user_agent || '-'}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="3" class="empty-state">No access logs yet</td></tr>';
+
+  el.innerHTML = `
+    <div class="result-card">
+      <div class="stats-summary">
+        <div><div class="stat-number">${data.total_accesses}</div><div class="stat-label">Total Clicks</div></div>
+        <div><div class="stat-number">${data.recent_accesses.length}</div><div class="stat-label">Recent Logs</div></div>
+        <div><div class="stat-number" style="font-size:1.2rem">${data.url.short_code}</div><div class="stat-label">Short Code</div></div>
+      </div>
+      <div style="margin-bottom:0.5rem">
+        <div class="label">Destination</div>
+        <div class="value" style="font-size:0.85rem;color:#94a3b8">${data.url.original_url}</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Timestamp</th><th>IP</th><th>User Agent</th></tr></thead>
+          <tbody>${recentRows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function fetchRecent() {
+  const el = document.getElementById('recentResult');
+  setLoading('recentBtn', true);
+  el.innerHTML = '';
+
+  const { ok, data } = await api('GET', '/recent/urls?limit=10');
+  setLoading('recentBtn', false);
+
+  if (!ok || !data.length) {
+    el.innerHTML = '<div class="empty-state">No URLs shortened yet</div>';
+    return;
+  }
+
+  el.innerHTML = data.map(u => `
+    <div class="result-card" style="margin-top:0.5rem">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div class="value"><a href="${u.short_url}" target="_blank">${u.short_url}</a></div>
+          <div class="value" style="font-size:0.8rem;color:#64748b;margin-top:0.15rem">${u.original_url}</div>
+        </div>
+        <button class="btn btn-secondary" style="padding:0.4rem 0.8rem;font-size:0.8rem" onclick="openStats('${u.short_code}')">Stats</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openStats(code) {
+  document.getElementById('statsCode').value = code;
+  switchTab('stats');
+  fetchStats();
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === 'tab-' + name));
+}
+
+async function copyUrl(url) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Copied to clipboard!');
+  } catch {
+    const el = document.createElement('textarea');
+    el.value = url;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    toast('Copied to clipboard!');
+  }
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => { if (e.key === 'Enter') shorten(); });
+document.getElementById('aliasInput').addEventListener('keydown', e => { if (e.key === 'Enter') shorten(); });
+document.getElementById('statsCode').addEventListener('keydown', e => { if (e.key === 'Enter') fetchStats(); });
+</script>
+</body>
+</html>

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.crud import create_short_url, get_access_logs, get_original_url, get_url_mapping, record_access
+from app.crud import create_short_url, get_access_logs, get_original_url, get_recent_url_mappings, get_url_mapping, record_access
 from app.database import get_db
 from app.schemas import AccessLogResponse, URLResponse, URLStats, URLCreate
 
@@ -46,6 +46,12 @@ def get_url_stats(code: str, db: Session = Depends(get_db)):
         total_accesses=db_url.access_count,
         recent_accesses=[AccessLogResponse.model_validate(log) for log in logs],
     )
+
+
+@router.get("/recent/urls", response_model=list[URLResponse])
+def recent_links(limit: int = 10, db: Session = Depends(get_db)):
+    urls = get_recent_url_mappings(db, limit)
+    return [_format_response(u) for u in urls]
 
 
 def _format_response(db_url) -> URLResponse:

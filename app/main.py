@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.database import Base, SessionLocal, engine
 from app.models import Counter
@@ -52,3 +53,5 @@ def health_check():
 
 
 app.include_router(urls.router, tags=["URLs"])
+
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
